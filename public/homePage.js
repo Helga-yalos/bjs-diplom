@@ -2,13 +2,13 @@
 const logoutButton = new LogoutButton();
 logoutButton.action = () => {
 	ApiConnector.logout(callback => {
-		if (callback.success === true)
+		if (callback.success)
 			location.reload();
 	});
 }
 
 ApiConnector.current(callback => {
-	if (callback.success === true){
+	if (callback.success){
 		return ProfileWidget.showProfile(callback.data);
 	}
 });
@@ -17,20 +17,22 @@ const ratesBoard = new RatesBoard();
 
 function getExchangeRates(){
 	ApiConnector.getStocks(callback => {
-		if (callback.success === true) {
+		if (callback.success) {
 			ratesBoard.clearTable();
 			ratesBoard.fillTable(callback.data);
+			console.log(callback);
 		}
 	})
 }
+getExchangeRates();
+setInterval(() => getExchangeRates(), 60000);//правильно ли я добавила именно setInterval?
 
-setTimeout(getExchangeRates(), 60000);
 
 const moneyManager = new MoneyManager();
 moneyManager.addMoneyCallback = (data) => {
-	ApiConnector.addMoney(data, callback =>{
-		if (callback.success === false) {
-			moneyManager.setMessage(true, "Ошибка пополнения баланса");
+	ApiConnector.addMoney(data, callback => {
+		if (!callback.success) {
+			moneyManager.setMessage(true, `${callback.data}`);//вывожу сообщение из data, здесь и далее
 		} else {
 			ProfileWidget.showProfile(callback.data);
 			moneyManager.setMessage(false, "Баланс пополнен!");
@@ -39,8 +41,8 @@ moneyManager.addMoneyCallback = (data) => {
 }
 moneyManager.conversionMoneyCallback = (data) => {
 	ApiConnector.convertMoney(data, callback => {
-		if (callback.success === false) {
-			moneyManager.setMessage(true, "Ошибка конвертации");
+		if (!callback.success) {
+			moneyManager.setMessage(true, `${callback.data}`);
 		} else {
 			ProfileWidget.showProfile(callback.data);
 			moneyManager.setMessage(false, "Конвертация прошла успешно!");
@@ -50,8 +52,8 @@ moneyManager.conversionMoneyCallback = (data) => {
 
 moneyManager.sendMoneyCallback = (data) => {
 	ApiConnector.transferMoney(data, callback => {
-		if (callback.success === false) {
-			moneyManager.setMessage(true, "Ошибка перевода валюты");
+		if (!callback.success) {
+			moneyManager.setMessage(true, `${callback.data}`);
 		} else {
 			ProfileWidget.showProfile(callback.data);
 			moneyManager.setMessage(false, "Перевод валюты прошел успешно!");
@@ -60,27 +62,25 @@ moneyManager.sendMoneyCallback = (data) => {
 }
 
 const favoritesWidget = new FavoritesWidget();
-const getFavoritesWidget = () => {
-	let result = {};
+function getFavoritesWidget() {
 	ApiConnector.getFavorites(callback => {
-		if (callback.success === true) {
-			result = callback.data;
+		if (callback.success) {
 			favoritesWidget.clearTable();
-			favoritesWidget.fillTable(result);
-			moneyManager.updateUsersList(result);
+			favoritesWidget.fillTable(callback.data);
+			moneyManager.updateUsersList(callback.data);
 		} 
 	})
-	return result;
 }
+getFavoritesWidget(); //доработала функцию. Идет её вызов при загрузке страницы, больше её не вызываю.
 
 favoritesWidget.addUserCallback = (data) => {
 	ApiConnector.addUserToFavorites(data, callback => {
-		if (callback.success === false) {
-			favoritesWidget.setMessage(true, "Ошибка добавления пользователя в список избранных");
+		if (!callback.success) {
+			favoritesWidget.setMessage(true, `${callback.data}`);
 		} else {
 			favoritesWidget.clearTable();
-			favoritesWidget.fillTable(getFavoritesWidget());
-			moneyManager.updateUsersList(getFavoritesWidget());
+			favoritesWidget.fillTable(callback.data);//отрисовываю таблицу данными из коллбека- здесь и далее
+			moneyManager.updateUsersList(callback.data);
 			favoritesWidget.setMessage(false, "Пользователь успешно добавлен");
 		}
 	})
@@ -88,13 +88,14 @@ favoritesWidget.addUserCallback = (data) => {
 
 favoritesWidget.removeUserCallback = (id) => {
 	ApiConnector.removeUserFromFavorites(id, callback => {
-		if (callback.success === false) {
-			favoritesWidget.setMessage(true, `Ошибка удаления пользователя с ID ${id}`);
+		if (!callback.success) {
+			favoritesWidget.setMessage(true, `${callback.data}`);
 		} else {
 			favoritesWidget.clearTable();
-			favoritesWidget.fillTable(getFavoritesWidget());
-			moneyManager.updateUsersList(getFavoritesWidget());
+			favoritesWidget.fillTable(callback.data);
+			moneyManager.updateUsersList(callback.data);
 			favoritesWidget.setMessage(false, `Пользователь ID ${id} удален`);
 		}
 	})
 }
+
